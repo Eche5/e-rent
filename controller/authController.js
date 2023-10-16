@@ -36,8 +36,7 @@ exports.createUser = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     res.status(201).json({
-      status: "success",
-      message: "account created successfully",
+      newUser,
       accessToken,
     });
   } catch (error) {
