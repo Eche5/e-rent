@@ -3,7 +3,6 @@ const jwt = require("jsonwebtoken");
 exports.createUser = async (req, res) => {
   try {
     const { email } = req.body;
-    console.log(req.body);
     const user = await User.findOne({ email });
     if (user) return res.status(403).json({ message: "email already exist" });
 
@@ -86,21 +85,28 @@ exports.Login = async (req, res) => {
 
 exports.getOneUser = async (req, res) => {
   const email = req.query.email;
+  const accessToken = req.query.token;
   const user = await User.findOne({ email });
-  const accessToken = jwt.sign({ id: user.email }, process.env.JWT_SECRET, {
-    expiresIn: "10m",
-  });
-  const refreshToken = jwt.sign({ id: user }, process.env.REFRESH_JWT_SECRET, {
-    expiresIn: "30m",
-  });
-  console.log(refreshToken);
-  res.cookie("jwt", refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
-  if (user) return res.status(200).json({ user, accessToken });
+  if (user) {
+    const refreshToken = jwt.sign(
+      { id: user.email },
+      process.env.REFRESH_JWT_SECRET,
+      {
+        expiresIn: "30m",
+      }
+    );
+    res.cookie("jwt", refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    return res.status(200).json({ user, accessToken });
+  } else {
+    return res
+      .status(403)
+      .json({ message: "email does not belong to an existing user" });
+  }
 };
 
 exports.UpateMe = async (req, res) => {
@@ -112,7 +118,6 @@ exports.UpateMe = async (req, res) => {
       email: req.body.email,
       confirmPassword: req.body.confirmPassword,
     });
-    console.log(user);
     const match = await user.comparePassword(
       req.body.confirmPassword,
       user.password
