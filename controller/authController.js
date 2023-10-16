@@ -85,9 +85,22 @@ exports.Login = async (req, res) => {
 };
 
 exports.getOneUser = async (req, res) => {
-  const id = req.params.id;
-  const users = await User.findOne({ _id: id });
-  if (users) return res.status(200).json({ data: users });
+  const email = req.query.email;
+  const user = await User.findOne({ email });
+  const accessToken = jwt.sign({ id: user.email }, process.env.JWT_SECRET, {
+    expiresIn: "10m",
+  });
+  const refreshToken = jwt.sign({ id: user }, process.env.REFRESH_JWT_SECRET, {
+    expiresIn: "30m",
+  });
+  console.log(refreshToken);
+  res.cookie("jwt", refreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  if (user) return res.status(200).json({ user, accessToken });
 };
 
 exports.UpateMe = async (req, res) => {
