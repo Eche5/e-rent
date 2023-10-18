@@ -1,5 +1,9 @@
 const User = require("../models/userModel");
 const jwt = require("jsonwebtoken");
+const { EMAIL, PASSWORD } = require("../env");
+const Mailgen = require("mailgen");
+const nodemailer = require("nodemailer");
+
 exports.createUser = async (req, res) => {
   try {
     const { email } = req.body;
@@ -136,3 +140,72 @@ exports.LogOut = async (req, res) => {
   res.clearCookie("jwt", { httpOnly: true, secure: true, sameSite: "None" });
   return res.json({ message: "cookie cleared" });
 };
+
+exports.forgotPassword = async (req, res, next) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res
+      .status(404)
+      .json({ status: "error", message: "user does not exist" });
+  } else {
+    console.log(user._id);
+    const reset = user.createResetPasswordToken();
+    await user.save({ validateBeforeSave: false });
+
+    let config = {
+      service: "gmail",
+      auth: {
+        user: EMAIL,
+        pass: PASSWORD,
+      },
+    };
+    let transporter = nodemailer.createTransport(config);
+
+    let MailGenerator = new Mailgen({
+      theme: "default",
+      product: {
+        name: "Mailgen",
+        link: "https://mailgen.js/",
+        copyright: "Copyright © 2023 e-gency. All rights reserved.",
+      },
+    });
+    let response = {
+      body: {
+        name: email,
+        intro:
+          "Someone recently requested that the password be reset, Please click the kink below",
+        action: {
+          instructions: "To reset your password please click this button:",
+          button: {
+            color: "#22BC66", // Optional action button color
+            text: "Confirm your account",
+            link: `http://localhost:5173/${user._id}/${reset}`,
+          },
+        },
+        signature: "Sincerely",
+        outro:
+          "If this is a mistake just ignore this email - your password will not be changed.",
+      },
+    };
+    let mail = MailGenerator.generate(response);
+    let message = {
+      from: EMAIL,
+      to: email,
+      subject: "Reset Password",
+      html: mail,
+    };
+    transporter
+      .sendMail(message)
+      .then(() => {
+        return res.status(200).json({
+          message: "success",
+        });
+      })
+      .catch(() => {
+        return res.status(404).json({ message: "failed" });
+      });
+  }
+};
+
+exports.resetPassword = (req, res, next) => {};
