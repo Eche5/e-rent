@@ -181,7 +181,7 @@ exports.forgotPassword = async (req, res, next) => {
           button: {
             color: "#22BC66", // Optional action button color
             text: "Confirm your account",
-            link: `http://localhost:5173/resetpassword/${user._id}/${reset}`,
+            link: `https://e-rent-green.vercel.app/resetpassword/${user._id}/${reset}`,
           },
         },
         signature: "Sincerely",
