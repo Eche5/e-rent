@@ -1,8 +1,10 @@
 const User = require("../models/userModel");
 const jwt = require("jsonwebtoken");
 const { EMAIL, PASSWORD } = require("../env");
+const crypto = require("crypto");
 const Mailgen = require("mailgen");
 const nodemailer = require("nodemailer");
+const { Console } = require("console");
 
 exports.createUser = async (req, res) => {
   try {
@@ -149,7 +151,6 @@ exports.forgotPassword = async (req, res, next) => {
       .status(404)
       .json({ status: "error", message: "user does not exist" });
   } else {
-    console.log(user._id);
     const reset = user.createResetPasswordToken();
     await user.save({ validateBeforeSave: false });
 
@@ -180,7 +181,7 @@ exports.forgotPassword = async (req, res, next) => {
           button: {
             color: "#22BC66", // Optional action button color
             text: "Confirm your account",
-            link: `http://localhost:5173/${user._id}/${reset}`,
+            link: `http://localhost:5173/resetpassword/${user._id}/${reset}`,
           },
         },
         signature: "Sincerely",
@@ -208,4 +209,44 @@ exports.forgotPassword = async (req, res, next) => {
   }
 };
 
-exports.resetPassword = (req, res, next) => {};
+exports.resetPassword = async (req, res, next) => {
+  const id = req.params.id;
+  const providedToken = req.params.token;
+  const hashOfProvidedToken = crypto
+    .createHash("sha256")
+    .update(providedToken)
+    .digest("hex");
+  const user = await User.findById(id);
+  let newpassword;
+  const match = await user.comparePassword(req.body.password, user.password);
+  const tokenisValid = hashOfProvidedToken === user.passwordResetToken;
+  const tokenIsExpired = user.passwordResetTokenExpires < Date.now();
+  if (!user) {
+    return res
+      .status(401)
+      .json({ status: "error", message: "user does not exist" });
+  } else if (match) {
+    return res.status(404).json({
+      status: "error",
+      message: "password cannot be the same as your previous password",
+    });
+  } else if (user && tokenisValid && !tokenIsExpired && !match) {
+    newpassword = await user.encryptpassword(
+      req.body.password,
+      req.body.confirmPassword
+    );
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      {
+        password: newpassword,
+        confirmPassword: undefined,
+      },
+      { validateBeforeSave: false }
+    );
+    return res.status(200).json({ status: "success" });
+  } else {
+    return res
+      .status(400)
+      .json({ status: "error", message: "please reset password" });
+  }
+};
