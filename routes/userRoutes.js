@@ -13,6 +13,10 @@ router.route("/refresh").get(refreshTokenHandler);
 router.route("/register").post(authController.createUser);
 router.route("/logout").post(authController.LogOut);
 router.route("/forgotpassword").post(authController.forgotPassword);
+router.route("/verify").post(authController.resendverification);
+
+router.route("/verify/:id").patch(authController.verify);
+
 router.route("/resetpassword/:id/:token").patch(authController.resetPassword);
 
 router.route("/googleauth").get(authController.getOneUser);

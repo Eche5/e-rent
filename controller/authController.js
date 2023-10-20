@@ -4,8 +4,8 @@ const { EMAIL, PASSWORD } = require("../env");
 const crypto = require("crypto");
 const Mailgen = require("mailgen");
 const nodemailer = require("nodemailer");
-const { Console } = require("console");
 
+//create account
 exports.createUser = async (req, res) => {
   try {
     const { email } = req.body;
@@ -20,33 +20,57 @@ exports.createUser = async (req, res) => {
       phonenumber: req.body.phonenumber,
       confirmPassword: req.body.confirmPassword,
     });
+    let config = {
+      service: "gmail",
+      auth: {
+        user: EMAIL,
+        pass: PASSWORD,
+      },
+    };
+    let transporter = nodemailer.createTransport(config);
 
-    const accessToken = jwt.sign(
-      { id: req.body.phonenumber },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "10m",
-      }
-    );
-    const refreshToken = jwt.sign(
-      { id: req.body.phonenumber },
-      process.env.REFRESH_JWT_SECRET,
-      {
-        expiresIn: "30m",
-      }
-    );
-    res.cookie("jwt", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+    let MailGenerator = new Mailgen({
+      theme: "default",
+      product: {
+        name: "E-gency",
+        link: "https://mailgen.js/",
+        copyright: "Copyright © 2023 e-gency. All rights reserved.",
+      },
     });
-    res.status(201).json({
-      newUser,
-      accessToken,
-    });
+    let response = {
+      body: {
+        name: email,
+        intro:
+          "We are thrilled to have you join us. Verify your email address to get started and access the resources available on our platform.,",
+        action: {
+          instructions: "Click the button below to verify your account.:",
+          button: {
+            color: "#22BC66", // Optional action button color
+            text: "Verify your account",
+            link: ` http://localhost:5173/verify/${newUser._id}`,
+          },
+        },
+        signature: "Sincerely",
+      },
+    };
+    let mail = MailGenerator.generate(response);
+    let message = {
+      from: EMAIL,
+      to: email,
+      subject: "Verify email",
+      html: mail,
+    };
+    transporter
+      .sendMail(message)
+      .then(() => {
+        return res.status(200).json({
+          message: "success",
+        });
+      })
+      .catch(() => {
+        return res.status(404).json({ message: "failed" });
+      });
   } catch (error) {
-    console.log(error);
     res.status(400).json({
       status: "failed",
       message: error.message,
@@ -54,13 +78,117 @@ exports.createUser = async (req, res) => {
   }
 };
 
+//resend verification
+exports.resendverification = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  let config = {
+    service: "gmail",
+    auth: {
+      user: EMAIL,
+      pass: PASSWORD,
+    },
+  };
+  let transporter = nodemailer.createTransport(config);
+
+  let MailGenerator = new Mailgen({
+    theme: "default",
+    product: {
+      name: "E-gency",
+      link: "https://mailgen.js/",
+      copyright: "Copyright © 2023 e-gency. All rights reserved.",
+    },
+  });
+  let response = {
+    body: {
+      name: email,
+      intro:
+        "We are thrilled to have you join us. Verify your email address to get started and access the resources available on our platform.,",
+      action: {
+        instructions: "Click the button below to verify your account.:",
+        button: {
+          color: "#22BC66", // Optional action button color
+          text: "Verify your account",
+          link: ` http://localhost:5173/verify/${user._id}`,
+        },
+      },
+      signature: "Sincerely",
+    },
+  };
+  let mail = MailGenerator.generate(response);
+  let message = {
+    from: EMAIL,
+    to: email,
+    subject: "Verify email",
+    html: mail,
+  };
+  transporter
+    .sendMail(message)
+    .then(() => {
+      return res.status(200).json({
+        message: "success",
+      });
+    })
+    .catch(() => {
+      return res.status(404).json({ message: "failed" });
+    });
+};
+
+//email verification
+exports.verify = async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res
+        .status(403)
+        .json({ message: "email does not belong to an existing user" });
+    } else {
+      const user = await User.findByIdAndUpdate(id, { isVerified: true });
+
+      const accessToken = jwt.sign({ id: user.email }, process.env.JWT_SECRET, {
+        expiresIn: "10m",
+      });
+      const refreshToken = jwt.sign(
+        { id: user.email },
+        process.env.REFRESH_JWT_SECRET,
+        {
+          expiresIn: "30m",
+        }
+      );
+      res.cookie("jwt", refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+      res.status(200).json({ user, accessToken });
+    }
+  } catch (error) {
+    return res.status(404).json({
+      status: "failed",
+      message: "login failed",
+    });
+  }
+};
+
+//Login
 exports.Login = async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email }).exec();
-  if (!user)
+  if (!user) {
     return res
       .status(403)
       .json({ message: "email does not belong to an existing user" });
+  } else if (!user.isVerified) {
+    return res.status(401).json({
+      status: "failed",
+      message: "please verify your email",
+    });
+  }
 
   const match = await user.comparePassword(password, user.password);
   if (!match) {
@@ -88,6 +216,7 @@ exports.Login = async (req, res) => {
   }
 };
 
+//google auth
 exports.getOneUser = async (req, res) => {
   const email = req.query.email;
   const accessToken = req.query.token;
@@ -114,6 +243,7 @@ exports.getOneUser = async (req, res) => {
   }
 };
 
+//update profile
 exports.UpateMe = async (req, res) => {
   try {
     const id = req.params.id;
@@ -136,6 +266,8 @@ exports.UpateMe = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
+
+//Logout
 exports.LogOut = async (req, res) => {
   const cookies = req.cookies;
   if (!cookies?.jwt) return res.sendStatus(204);
@@ -143,6 +275,7 @@ exports.LogOut = async (req, res) => {
   return res.json({ message: "cookie cleared" });
 };
 
+//forgot password
 exports.forgotPassword = async (req, res, next) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
@@ -166,7 +299,7 @@ exports.forgotPassword = async (req, res, next) => {
     let MailGenerator = new Mailgen({
       theme: "default",
       product: {
-        name: "Mailgen",
+        name: "E-gency",
         link: "https://mailgen.js/",
         copyright: "Copyright © 2023 e-gency. All rights reserved.",
       },
@@ -174,8 +307,7 @@ exports.forgotPassword = async (req, res, next) => {
     let response = {
       body: {
         name: email,
-        intro:
-          "Someone recently requested that the password be reset, Please click the kink below",
+        intro: "Someone recently requested that the password be reset,",
         action: {
           instructions: "To reset your password please click this button:",
           button: {
@@ -209,6 +341,7 @@ exports.forgotPassword = async (req, res, next) => {
   }
 };
 
+//reset password
 exports.resetPassword = async (req, res, next) => {
   const id = req.params.id;
   const providedToken = req.params.token;

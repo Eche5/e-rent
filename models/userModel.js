@@ -38,6 +38,10 @@ const userSchema = new mongoose.Schema({
     required: [true, "Please provide your phone number"],
     unique: true,
   },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
   passwordResetToken: String,
   passwordResetTokenExpires: Date,
 });
