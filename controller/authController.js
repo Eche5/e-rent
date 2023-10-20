@@ -47,7 +47,7 @@ exports.createUser = async (req, res) => {
           button: {
             color: "#22BC66", // Optional action button color
             text: "Verify your account",
-            link: ` http://localhost:5173/verify/${newUser._id}`,
+            link: ` https://e-rent-green.vercel.app/verify/${newUser._id}`,
           },
         },
         signature: "Sincerely",
@@ -110,7 +110,7 @@ exports.resendverification = async (req, res) => {
         button: {
           color: "#22BC66", // Optional action button color
           text: "Verify your account",
-          link: ` http://localhost:5173/verify/${user._id}`,
+          link: ` https://e-rent-green.vercel.app/verify/${user._id}`,
         },
       },
       signature: "Sincerely",
