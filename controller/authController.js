@@ -420,7 +420,7 @@ exports.resetPassword = async (req, res, next) => {
         intro: "You have successfully changed your password",
         dictionary: { date: formattedDate },
         signature: "Sincerely",
-        outro: "IDidn't do this? Be sure to change your password right away.",
+        outro: "Didn't do this? Be sure to change your password right away.",
       },
     };
     let mail = MailGenerator.generate(response);
