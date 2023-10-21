@@ -102,7 +102,7 @@ exports.resendverification = async (req, res) => {
   });
   let response = {
     body: {
-      name: email,
+      name: user.firstname,
       intro:
         "We are thrilled to have you join us. Verify your email address to get started and access the resources available on our platform.,",
       action: {
@@ -146,6 +146,10 @@ exports.verify = async (req, res) => {
       return res
         .status(403)
         .json({ message: "email does not belong to an existing user" });
+    } else if (user.isVerified) {
+      return res
+        .status(401)
+        .json({ status: "error", message: "user already verified" });
     } else {
       const user = await User.findByIdAndUpdate(id, { isVerified: true });
 
@@ -306,7 +310,7 @@ exports.forgotPassword = async (req, res, next) => {
     });
     let response = {
       body: {
-        name: email,
+        name: user.firstname,
         intro: "Someone recently requested that the password be reset,",
         action: {
           instructions: "To reset your password please click this button:",
@@ -376,6 +380,66 @@ exports.resetPassword = async (req, res, next) => {
       },
       { validateBeforeSave: false }
     );
+
+    let config = {
+      service: "gmail",
+      auth: {
+        user: EMAIL,
+        pass: PASSWORD,
+      },
+    };
+
+    const currentTimestamp = Date.now();
+
+    const date = new Date(currentTimestamp);
+
+    const options = {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+      timeZoneName: "short",
+    };
+
+    const formattedDate = date.toLocaleString("en-US", options);
+    let transporter = nodemailer.createTransport(config);
+
+    let MailGenerator = new Mailgen({
+      theme: "default",
+      product: {
+        name: "E-gency",
+        link: "https://mailgen.js/",
+        copyright: "Copyright © 2023 e-gency. All rights reserved.",
+      },
+    });
+    let response = {
+      body: {
+        name: user.firstname,
+        intro: "You have successfully changed your password",
+        dictionary: { date: formattedDate },
+        signature: "Sincerely",
+        outro: "IDidn't do this? Be sure to change your password right away.",
+      },
+    };
+    let mail = MailGenerator.generate(response);
+    let message = {
+      from: EMAIL,
+      to: user.email,
+      subject: `${user.firstname}, your password was successfully reset`,
+      html: mail,
+    };
+    transporter
+      .sendMail(message)
+      .then(() => {
+        return res.status(200).json({
+          message: "success",
+        });
+      })
+      .catch(() => {
+        return res.status(404).json({ message: "failed" });
+      });
     return res.status(200).json({ status: "success" });
   } else {
     return res
