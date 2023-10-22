@@ -1,6 +1,5 @@
 const User = require("../models/userModel");
 const jwt = require("jsonwebtoken");
-const { EMAIL, PASSWORD } = require("../env");
 const crypto = require("crypto");
 const Mailgen = require("mailgen");
 const nodemailer = require("nodemailer");
@@ -23,8 +22,8 @@ exports.createUser = async (req, res) => {
     let config = {
       service: "gmail",
       auth: {
-        user: EMAIL,
-        pass: PASSWORD,
+        user: process.env.EMAIL,
+        pass: process.env.PASSWORD,
       },
     };
     let transporter = nodemailer.createTransport(config);
@@ -55,7 +54,7 @@ exports.createUser = async (req, res) => {
     };
     let mail = MailGenerator.generate(response);
     let message = {
-      from: EMAIL,
+      from: process.env.EMAIL,
       to: email,
       subject: "Verify email",
       html: mail,
@@ -86,8 +85,8 @@ exports.resendverification = async (req, res) => {
   let config = {
     service: "gmail",
     auth: {
-      user: EMAIL,
-      pass: PASSWORD,
+      user: process.env.EMAIL,
+      pass: process.env.PASSWORD,
     },
   };
   let transporter = nodemailer.createTransport(config);
@@ -118,7 +117,7 @@ exports.resendverification = async (req, res) => {
   };
   let mail = MailGenerator.generate(response);
   let message = {
-    from: EMAIL,
+    from: process.env.EMAIL,
     to: email,
     subject: "Verify email",
     html: mail,
@@ -294,8 +293,8 @@ exports.forgotPassword = async (req, res, next) => {
     let config = {
       service: "gmail",
       auth: {
-        user: EMAIL,
-        pass: PASSWORD,
+        user: process.env.EMAIL,
+        pass: process.env.PASSWORD,
       },
     };
     let transporter = nodemailer.createTransport(config);
@@ -327,7 +326,7 @@ exports.forgotPassword = async (req, res, next) => {
     };
     let mail = MailGenerator.generate(response);
     let message = {
-      from: EMAIL,
+      from: process.env.EMAIL,
       to: email,
       subject: "Reset Password",
       html: mail,
@@ -384,8 +383,8 @@ exports.resetPassword = async (req, res, next) => {
     let config = {
       service: "gmail",
       auth: {
-        user: EMAIL,
-        pass: PASSWORD,
+        user: process.env.EMAIL,
+        pass: process.env.PASSWORD,
       },
     };
 
@@ -425,7 +424,7 @@ exports.resetPassword = async (req, res, next) => {
     };
     let mail = MailGenerator.generate(response);
     let message = {
-      from: EMAIL,
+      from: process.env.EMAIL,
       to: user.email,
       subject: `${user.firstname}, your password was successfully reset`,
       html: mail,
