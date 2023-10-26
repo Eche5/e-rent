@@ -229,7 +229,7 @@ exports.getOneUser = async (req, res) => {
   const email = req.query.email;
   const accessToken = req.query.token;
   const user = await User.findOne({ email });
-  if (user) {
+  if (user && user.isVerified) {
     const refreshToken = jwt.sign(
       { id: user.email },
       process.env.REFRESH_JWT_SECRET,
