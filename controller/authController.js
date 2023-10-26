@@ -182,18 +182,19 @@ exports.verify = async (req, res) => {
 exports.Login = async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email }).exec();
+  const match = await user.comparePassword(password, user.password);
+
   if (!user) {
     return res
       .status(403)
       .json({ message: "email does not belong to an existing user" });
-  } else if (!user.isVerified) {
+  } else if (!match && !user.isVerified) {
     return res.status(401).json({
       status: "failed",
       message: "please verify your email",
     });
   }
 
-  const match = await user.comparePassword(password, user.password);
   if (!match) {
     return res
       .status(400)
