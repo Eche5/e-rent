@@ -38,11 +38,11 @@ exports.createUser = async (req, res) => {
     });
     let response = {
       body: {
-        name: email,
+        name: newUser.firstname,
         intro:
-          "We are thrilled to have you join us. Verify your email address to get started and access the resources available on our platform.,",
+          "We are thrilled to have you join us. Verify your email address to get started and access the resources available on our platform.",
         action: {
-          instructions: "Click the button below to verify your account.:",
+          instructions: "Click the button below to verify your account:",
           button: {
             color: "#22BC66", // Optional action button color
             text: "Verify your account",
@@ -188,11 +188,15 @@ exports.Login = async (req, res) => {
     return res
       .status(403)
       .json({ message: "email does not belong to an existing user" });
-  } else if (!match && !user.isVerified) {
+  } else if (match && !user.isVerified) {
     return res.status(401).json({
       status: "failed",
       message: "please verify your email",
     });
+  } else if (!match && !user.isVerified) {
+    return res
+      .status(400)
+      .json({ status: "failed", message: "email or password does not match" });
   }
 
   if (!match) {
@@ -240,6 +244,11 @@ exports.getOneUser = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     return res.status(200).json({ user, accessToken });
+  } else if (user && !user.isVerified) {
+    return res.status(401).json({
+      status: "failed",
+      message: "please verify your email",
+    });
   } else {
     return res
       .status(403)
